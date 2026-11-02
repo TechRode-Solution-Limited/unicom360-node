@@ -1,0 +1,5 @@
+* text=auto eol=lf
+
+# The vendored conformance fixtures are verified byte for byte against the sha256 in
+# test/conformance/VERSION: never let Git rewrite their line endings.
+test/conformance/** -text

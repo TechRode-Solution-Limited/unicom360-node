@@ -1,0 +1,9 @@
+{
+  // The published source: no Node types, so nothing Node-only can slip in. The SDK runs on
+  // Node, Bun, Deno and edge runtimes with the web platform's fetch, crypto and timers.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": []
+  },
+  "include": ["src"]
+}

@@ -1,0 +1,77 @@
+{
+  "name": "unicom360",
+  "version": "0.1.0",
+  "description": "Official Node.js and TypeScript SDK for the Unicom360 SMS, email and WhatsApp API",
+  "keywords": [
+    "unicom360",
+    "sms",
+    "email",
+    "whatsapp",
+    "messaging",
+    "api",
+    "sdk",
+    "zambia"
+  ],
+  "homepage": "https://unicom360.com/docs",
+  "bugs": {
+    "url": "https://github.com/TechRode-Solution-Limited/unicom360-node/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TechRode-Solution-Limited/unicom360-node.git"
+  },
+  "license": "MIT",
+  "author": "Techrode Solutions Limited <info@techrode.co> (https://unicom360.com)",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.cts",
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc -p tsconfig.src.json && tsc -p tsconfig.json && tsc -p examples/tsconfig.json",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:contract": "vitest run --config vitest.contract.config.ts",
+    "check:fixtures": "node scripts/check-conformance.mjs",
+    "check:package": "publint --strict && attw --pack . --profile node16",
+    "docs": "typedoc",
+    "prepublishOnly": "npm run build && npm test"
+  },
+  "devDependencies": {
+    "@arethetypeswrong/cli": "0.18.5",
+    "@eslint/js": "10.0.1",
+    "@types/express": "5.0.6",
+    "@types/node": "20.19.43",
+    "eslint": "10.14.0",
+    "globals": "17.14.0",
+    "prettier": "3.9.10",
+    "publint": "0.3.25",
+    "tsup": "8.5.1",
+    "typedoc": "0.28.20",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.72.1",
+    "vitest": "4.1.12"
+  }
+}

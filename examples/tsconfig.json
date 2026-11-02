@@ -1,0 +1,10 @@
+{
+  // Type-checks the examples against the source, as `import ... from "unicom360"`.
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "unicom360": ["../src/index.ts"]
+    }
+  },
+  "include": ["."]
+}

@@ -74,6 +74,21 @@ describe("API key", () => {
     expect(() => new Unicom360()).not.toThrow();
   });
 
+  it("is trimmed, and refused when a header cannot carry it", async () => {
+    const { sent, transport } = recorder(() => ok(SMS_OK));
+    await new Unicom360({ apiKey: `${SECRET_KEY}\n`, transport }).sms.send(sms);
+    expect(sent[0]!.headers["X-API-Key"]).toBe(SECRET_KEY);
+    const error = (() => {
+      try {
+        return new Unicom360({ apiKey: "sk-abc\r\nX-Evil: 1" });
+      } catch (e) {
+        return e;
+      }
+    })();
+    expect(error).toBeInstanceOf(ConfigurationError);
+    expect(String(error)).not.toContain("sk-abc");
+  });
+
   it("treats an explicit empty string as given, not as missing", () => {
     process.env.UNICOM360_API_KEY = "from-env";
     expect(() => new Unicom360({ apiKey: "" })).toThrow(ConfigurationError);
@@ -354,6 +369,14 @@ describe("retries", () => {
       .catch((e: unknown) => e);
     expect(error).toBeInstanceOf(DuplicateReferenceError);
     expect((error as DuplicateReferenceError).attempts).toBe(2);
+  });
+
+  it("read a transport failure's facts by shape (another copy of the package)", async () => {
+    const foreign = Object.assign(new Error("refused"), { sent: false, timeout: false });
+    const { sent, transport } = recorder(() => Promise.reject(foreign));
+    const client = new Unicom360({ apiKey: "k", transport, sleeper: () => undefined });
+    await expect(client.sms.send(sms)).rejects.toThrow(APIConnectionError);
+    expect(sent).toHaveLength(3); // not sent, so even an unsafe send is retried
   });
 
   it("treat an unclassified transport failure as possibly sent", async () => {

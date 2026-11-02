@@ -10,7 +10,8 @@ export default defineConfig({
   },
   target: "node20",
   platform: "neutral",
-  sourcemap: true,
+  // The output is unminified and keeps the doc comments, so it reads well without maps.
+  sourcemap: false,
   clean: true,
   splitting: false,
   treeshake: true,

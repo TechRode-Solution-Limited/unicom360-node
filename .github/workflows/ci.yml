@@ -1,0 +1,150 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint, format, types and docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run format:check
+      - name: Type-check the source, tests and examples
+        run: npm run typecheck
+      - name: TypeDoc (warnings are errors)
+        run: npm run docs
+
+      - name: No em dash characters
+        run: |
+          if grep -rn --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist --exclude-dir=docs $'\xe2\x80\x94' . ; then
+            echo "Em dash characters found above: rewrite those sentences." >&2
+            exit 1
+          fi
+
+  test:
+    name: Test (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [20, 22, 24]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      - run: npm ci
+      - name: Unit tests and the conformance suite
+        run: npm test
+
+  build:
+    name: Build and package checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+      - run: npm run build
+      - name: publint and Are the Types Wrong
+        run: npm run check:package
+
+      - name: Install the packed tarball and load it with import and require
+        run: |
+          npm pack
+          tarball="$GITHUB_WORKSPACE/unicom360-$(node -p "require('./package.json').version").tgz"
+          smoke="$RUNNER_TEMP/smoke"
+          mkdir -p "$smoke"
+          cd "$smoke"
+          npm init --yes > /dev/null
+          npm install "$tarball"
+          node --input-type=module -e "
+            import { Unicom360, VERSION, gsm } from 'unicom360';
+            const client = new Unicom360({ apiKey: 'k' });
+            if (!String(client).includes('[REDACTED]') || gsm.units('a') !== 1) process.exit(1);
+            console.log('import ok', VERSION);
+          "
+          node -e "
+            const { Unicom360, VERSION, Webhooks } = require('unicom360');
+            new Unicom360({ apiKey: 'k' });
+            if (typeof Webhooks.verify !== 'function') process.exit(1);
+            console.log('require ok', VERSION);
+          "
+
+  contract:
+    name: Contract (Prism mock of openapi.yaml)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read the contract version the fixtures were vendored from
+        id: contract
+        run: echo "tag=$(sed -n 's/^tag=//p' test/conformance/VERSION)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        with:
+          repository: TechRode-Solution-Limited/unicom360-openapi
+          ref: ${{ steps.contract.outputs.tag }}
+          path: unicom360-openapi
+
+      - name: Start Prism
+        run: |
+          docker run --detach --name prism --publish 4010:4010 \
+            --volume "$GITHUB_WORKSPACE/unicom360-openapi:/spec:ro" \
+            stoplight/prism:5 mock --host 0.0.0.0 --multiprocess=false --errors /spec/openapi.yaml
+          for _ in $(seq 1 60); do
+            if curl --silent --fail --output /dev/null http://127.0.0.1:4010/health; then exit 0; fi
+            sleep 1
+          done
+          docker logs prism
+          exit 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+      - name: Every request against the spec
+        run: npm run test:contract
+        env:
+          UNICOM360_CONTRACT_BASE_URL: http://127.0.0.1:4010
+
+      - name: Prism log
+        if: failure()
+        run: docker logs prism
+
+  actionlint:
+    name: actionlint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lint the workflows
+        run: |
+          bash <(curl --silent --show-error --fail --location https://raw.githubusercontent.com/rhysd/actionlint/v1.7.12/scripts/download-actionlint.bash) 1.7.12
+          ./actionlint -color

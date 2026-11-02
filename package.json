@@ -54,8 +54,7 @@
     "format:check": "prettier --check .",
     "test": "vitest run",
     "test:contract": "vitest run --config vitest.contract.config.ts",
-    "check:fixtures": "node scripts/check-conformance.mjs",
-    "check:package": "publint --strict && attw --pack . --profile node16",
+    "check:package": "publint --strict && attw --pack .",
     "docs": "typedoc",
     "prepublishOnly": "npm run build && npm test"
   },

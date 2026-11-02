@@ -186,11 +186,18 @@ export function resolveOptions(options: ClientOptions): ResolvedOptions {
         "dangerouslyAllowBrowser: true.",
     );
   }
-  const apiKey = options.apiKey !== undefined ? options.apiKey : readEnv("UNICOM360_API_KEY");
-  if (typeof apiKey !== "string" || apiKey.trim() === "") {
+  const givenKey = options.apiKey !== undefined ? options.apiKey : readEnv("UNICOM360_API_KEY");
+  if (typeof givenKey !== "string" || givenKey.trim() === "") {
     throw new ConfigurationError(
       "Missing API key: pass apiKey or set the UNICOM360_API_KEY environment variable",
     );
+  }
+  // Surrounding whitespace (a key read from a file ends with a newline) is what fetch strips
+  // from a header value anyway. Anything that cannot be sent in a header is refused here, so a
+  // fetch error can never echo the key.
+  const apiKey = givenKey.trim();
+  if (/[^\x20-\x7e\x80-\xff]/.test(apiKey)) {
+    throw new ConfigurationError("The API key contains characters an HTTP header cannot carry");
   }
   const envBaseUrl = readEnv("UNICOM360_BASE_URL");
   const baseUrl =
@@ -353,10 +360,7 @@ export class ClientCore {
     try {
       response = await this.#transport(call.http);
     } catch (thrown) {
-      const failure =
-        thrown instanceof TransportError
-          ? thrown
-          : new TransportError({ sent: true, timeout: false, cause: thrown });
+      const failure = asTransportError(thrown);
       const error = connectionError(failure, attempt);
       this.#logAttempt(call, attempt, started, { status: null, error: error.type });
       return { ok: false, error, retryable: !failure.sent || call.safe };
@@ -394,6 +398,29 @@ export class ClientCore {
       ...(call.generated.length > 0 ? { generated_user_reference_ids: call.generated } : {}),
     });
   }
+}
+
+/**
+ * A transport failure's facts. Read by shape as well as by class, so a TransportError from
+ * another copy of this package (ESM and CommonJS both loaded) keeps its facts; anything else is
+ * treated as "may have been sent".
+ */
+function asTransportError(thrown: unknown): TransportError {
+  if (thrown instanceof TransportError) return thrown;
+  const facts = thrown as { sent?: unknown; timeout?: unknown; cause?: unknown } | null;
+  if (
+    thrown instanceof Error &&
+    typeof facts?.sent === "boolean" &&
+    typeof facts.timeout === "boolean"
+  ) {
+    return new TransportError({
+      sent: facts.sent,
+      timeout: facts.timeout,
+      cause: facts.cause ?? thrown,
+      message: thrown.message,
+    });
+  }
+  return new TransportError({ sent: true, timeout: false, cause: thrown });
 }
 
 function describeCause(error: unknown): string {

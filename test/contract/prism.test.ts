@@ -28,7 +28,12 @@ function client(exchanges: Exchange[]): Unicom360 {
     });
     return response;
   };
-  return new Unicom360({ apiKey: "contract-test-key", baseUrl: BASE_URL, fetch: recordingFetch, maxRetries: 0 });
+  return new Unicom360({
+    apiKey: "contract-test-key",
+    baseUrl: BASE_URL,
+    fetch: recordingFetch,
+    maxRetries: 0,
+  });
 }
 
 describe(`Prism contract (${BASE_URL})`, () => {
@@ -48,8 +53,12 @@ describe(`Prism contract (${BASE_URL})`, () => {
         // HTTP error, including Prism's own validation answers, is not.
         if (!(error instanceof APIError)) {
           const detail =
-            error instanceof Unicom360Error ? `${error.name} ${error.httpStatus ?? ""} ${error.rawBody ?? ""}` : String(error);
-          throw new Error(`${vector.id}: ${detail} ${JSON.stringify(exchanges)}`);
+            error instanceof Unicom360Error
+              ? `${error.name} ${error.httpStatus ?? ""} ${error.rawBody ?? ""}`
+              : String(error);
+          throw new Error(`${vector.id}: ${detail} ${JSON.stringify(exchanges)}`, {
+            cause: error,
+          });
         }
         outcome = error;
       }

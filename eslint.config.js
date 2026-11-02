@@ -22,7 +22,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ["test/**/*.ts", "examples/**/*.ts", "scripts/**", "*.config.ts", "*.js"],
+    files: ["test/**/*.ts", "examples/**/*.ts", "*.config.ts", "*.js"],
     languageOptions: { globals: { ...globals.node } },
     rules: {
       "@typescript-eslint/no-non-null-assertion": "off",

@@ -234,7 +234,7 @@ try {
 
 | Class                                            | When                                                                              |
 | ------------------------------------------------ | --------------------------------------------------------------------------------- |
-| `ConfigurationError`                             | A missing API key, a bad base URL or option, or a browser (see below)             |
+| `ConfigurationError`                             | No API key or webhook secret, a bad base URL or option, or a browser (see below)  |
 | `APIConnectionError`                             | The request did not complete (refused, reset, unreadable)                         |
 | `APITimeoutError` (extends `APIConnectionError`) | The request timed out                                                             |
 | `APIStatusError`                                 | Any other non-2xx answer, or a 2xx without a usable envelope                      |
@@ -333,6 +333,10 @@ whose `reason` is `missing_signature`, `missing_timestamp`, `invalid_timestamp`,
 `malformed_signature`, `timestamp_out_of_tolerance` or `signature_mismatch`. The signing time
 may be at most `tolerance` milliseconds from now (default 300000, five minutes). Use the
 43-character secret exactly as the portal shows it; never base64-decode it.
+
+An empty or whitespace-only secret (an unset environment variable, say) rejects with
+`ConfigurationError` before any other check, because anyone can forge a signature with an empty
+key. That is a fault in your configuration, not a failed verification: answer 500, not 401.
 
 **Express** (use `express.raw`, not `express.json`):
 

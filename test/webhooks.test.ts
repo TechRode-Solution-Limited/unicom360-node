@@ -19,8 +19,8 @@ const body = JSON.stringify({
   data: { message_id: "m-1", status: "delivered" },
 });
 
-function sign(text: string, timestamp: number): Record<string, string> {
-  const digest = createHmac("sha256", secret).update(`${timestamp}.${text}`).digest("hex");
+function sign(text: string, timestamp: number, key = secret): Record<string, string> {
+  const digest = createHmac("sha256", key).update(`${timestamp}.${text}`).digest("hex");
   return {
     "X-Unicom360-Timestamp": String(timestamp),
     "X-Unicom360-Signature": `sha256=${digest}`,
@@ -57,6 +57,46 @@ describe("Webhooks.verify", () => {
 
   it("refuses an empty secret as a configuration error", async () => {
     await expect(Webhooks.verify(body, sign(body, 1), "")).rejects.toThrow(ConfigurationError);
+  });
+
+  describe.each(["", " ", "   ", "\t", "\r\n", " \t\r\n "])("with the blank secret %j", (blank) => {
+    const now = 1792829762;
+    const options = { now: now * 1000 };
+
+    // Anyone can compute this signature, so it must never verify.
+    it("refuses a request signed with that same key", async () => {
+      const forged = sign(body, now, blank);
+      for (const call of [
+        Webhooks.verify(body, forged, blank, options),
+        Webhooks.constructEvent(body, forged, blank, options),
+      ]) {
+        const error = await call.catch((e: unknown) => e);
+        expect(error).toBeInstanceOf(ConfigurationError);
+        expect(error).not.toBeInstanceOf(SignatureVerificationError);
+        expect(error).not.toHaveProperty("reason");
+      }
+    });
+
+    it("refuses before looking at any header", async () => {
+      await expect(Webhooks.verify(body, {}, blank)).rejects.toThrow(ConfigurationError);
+      await expect(Webhooks.constructEvent(body, {}, blank)).rejects.toThrow(ConfigurationError);
+    });
+  });
+
+  it("refuses an unset secret as a configuration error", async () => {
+    const unset = undefined as unknown as string;
+    await expect(Webhooks.verify(body, sign(body, 1), unset)).rejects.toThrow(ConfigurationError);
+  });
+
+  it("uses the secret exactly as given, never trimmed", async () => {
+    const now = 1792829762;
+    const options = { now: now * 1000 };
+    const padded = ` ${secret}\n`;
+    const headers = sign(body, now, padded);
+    await expect(Webhooks.verify(body, headers, padded, options)).resolves.toBeUndefined();
+    await expect(Webhooks.verify(body, headers, secret, options)).rejects.toMatchObject({
+      reason: "signature_mismatch",
+    });
   });
 
   it("treats a timestamp too large for 64 bits as out of tolerance", async () => {

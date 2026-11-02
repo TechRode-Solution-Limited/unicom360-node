@@ -79,7 +79,10 @@ export class Unicom360Error extends Error {
 }
 nameClass(Unicom360Error, "Unicom360Error");
 
-/** The client was configured wrongly (a missing API key, a bad base URL, an invalid option). */
+/**
+ * The SDK was configured wrongly (a missing API key, a bad base URL, an invalid option, a blank
+ * webhook secret).
+ */
 export class ConfigurationError extends Unicom360Error {
   override readonly type = "configuration_error";
 }

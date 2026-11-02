@@ -116,7 +116,10 @@ function subtleCrypto(): SubtleCrypto {
  *
  * @param rawBody - The body exactly as received, before JSON parsing.
  * @param headers - The request headers.
- * @param secret - The 43-character webhook secret from the portal.
+ * @param secret - The 43-character webhook secret from the portal, used exactly as given.
+ * @throws {@link ConfigurationError} before any other check, when the secret is missing, empty
+ * or only whitespace: anyone can forge a signature with an empty key. It is a fault in your
+ * configuration, not a failed verification.
  */
 export async function verify(
   rawBody: RawBody,
@@ -124,8 +127,10 @@ export async function verify(
   secret: string,
   options: VerifyOptions = {},
 ): Promise<void> {
-  if (typeof secret !== "string" || secret === "") {
-    throw new ConfigurationError("The webhook secret is missing");
+  if (typeof secret !== "string" || secret.trim() === "") {
+    throw new ConfigurationError(
+      "The webhook secret is empty or only whitespace: set it to the secret from the portal",
+    );
   }
   const body = bodyBytes(rawBody);
   const signature = header(headers, SIGNATURE_HEADER);
@@ -183,7 +188,8 @@ function parseObject(rawBody: RawBody, what: string): JsonObject {
  * Deliveries are retried (30s, 2m, 10m, 30m, 1h, 3h, 6h, 12h) on any non-2xx answer, so answer
  * 2xx quickly and drop repeats by `deliveryId`.
  *
- * @throws {@link SignatureVerificationError} when verification fails;
+ * @throws {@link ConfigurationError} when the secret is missing, empty or only whitespace;
+ * {@link SignatureVerificationError} when verification fails;
  * {@link Unicom360Error} when the body is not a JSON object with a string `event`.
  */
 export async function constructEvent(

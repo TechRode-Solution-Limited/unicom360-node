@@ -25,6 +25,8 @@ First release, targeting the Unicom360 API contract v0.1.0.
 - The `autoReferenceIds` option.
 - `Webhooks.verify` and `Webhooks.constructEvent` for signed WhatsApp webhooks (Web Crypto),
   and `Webhooks.parseSmsCallback` and `Webhooks.parseEmailCallback` for delivery reports.
+  An empty or whitespace-only secret is a `ConfigurationError` before any other check, because
+  anyone can forge a signature with an empty key.
 - `gsm` helpers matching the gateway's GSM-7 rules and billing units.
 - Optional logging with redaction of the API key everywhere.
 - ESM and CommonJS builds with type declarations; no runtime dependencies.

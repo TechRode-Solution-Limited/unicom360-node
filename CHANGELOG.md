@@ -6,7 +6,7 @@ All notable changes to this package are documented here. The format is based on
 
 ## [Unreleased]
 
-## [0.1.0] - Unreleased
+## [0.1.0] - 2026-11-04
 
 First release, targeting the Unicom360 API contract v0.1.0.
 
